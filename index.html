@@ -1,71 +1,78 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Auxilio Mecánico - Pro Tracking</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap');
-        
-        * { box-sizing: border-box; }
-        
-        body { 
-            font-family: 'Outfit', system-ui, sans-serif; 
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', system-ui, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            margin: 0; 
+            margin: 0;
             overflow: hidden;
             color: #0f172a;
         }
-        
-        #map { 
-            height: 100vh; 
-            width: 100%; 
-            position: absolute; 
-            top: 0; 
+
+        #map {
+            height: 100vh;
+            width: 100%;
+            position: absolute;
+            top: 0;
             z-index: 0;
             filter: saturate(1.2) contrast(1.05) brightness(1.02);
         }
-        
-        .leaflet-routing-container { display: none !important; }
-        
-        .ui-container { 
-            position: relative; 
-            z-index: 1000; 
-            height: 100vh; 
-            display: flex; 
-            flex-direction: column; 
-            justify-content: space-between; 
-            padding: 20px 20px 0 20px; 
+
+        .leaflet-routing-container {
+            display: none !important;
+        }
+
+        .ui-container {
+            position: relative;
+            z-index: 1000;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 20px 20px 0 20px;
             pointer-events: none;
         }
-        
-        .interactive { pointer-events: auto; }
-        
-        .glass-panel { 
+
+        .interactive {
+            pointer-events: auto;
+        }
+
+        .glass-panel {
             background: rgba(255, 255, 255, 0.55);
             backdrop-filter: blur(40px) saturate(1.8);
             border: 2px solid rgba(255, 255, 255, 0.4);
-            box-shadow: 
+            box-shadow:
                 0 20px 60px rgba(0, 0, 0, 0.18),
                 0 8px 24px rgba(0, 0, 0, 0.12),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
         }
-        
+
         .status-badge {
             position: relative;
             overflow: hidden;
         }
-        
+
         .status-badge::before {
             content: '';
             position: absolute;
@@ -73,84 +80,108 @@
             left: -50%;
             width: 200%;
             height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.3), transparent);
             animation: shimmer 3s infinite;
         }
-        
+
         @keyframes shimmer {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
         }
-        
+
         @keyframes pulse-ring {
-            0%, 100% { 
+
+            0%,
+            100% {
                 transform: scale(1);
                 opacity: 1;
             }
-            50% { 
+
+            50% {
                 transform: scale(1.1);
                 opacity: 0.8;
             }
         }
-        
+
         @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
+
+            0%,
+            100% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-6px);
+            }
         }
-        
+
         @keyframes slideIn {
-            from { 
+            from {
                 opacity: 0;
                 transform: translateY(20px);
             }
-            to { 
+
+            to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
-        
+
         @keyframes slideUp {
-            from { 
+            from {
                 transform: translateY(100%);
             }
-            to { 
+
+            to {
                 transform: translateY(0);
             }
         }
-        
+
         .animate-slide-in {
             animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        
+
         .event-item {
             opacity: 0;
             animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        
-        #event-log::-webkit-scrollbar { width: 6px; }
-        #event-log::-webkit-scrollbar-track { 
-            background: #f1f5f9; 
+
+        #event-log::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        #event-log::-webkit-scrollbar-track {
+            background: #f1f5f9;
             border-radius: 10px;
             margin: 8px 0;
         }
-        #event-log::-webkit-scrollbar-thumb { 
+
+        #event-log::-webkit-scrollbar-thumb {
             background: linear-gradient(180deg, #cbd5e1, #94a3b8);
             border-radius: 10px;
             border: 2px solid #f1f5f9;
         }
-        #event-log::-webkit-scrollbar-thumb:hover { 
+
+        #event-log::-webkit-scrollbar-thumb:hover {
             background: linear-gradient(180deg, #94a3b8, #64748b);
         }
-        
-        .mono { font-family: 'JetBrains Mono', monospace; }
-        
+
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
         .btn-primary {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             position: relative;
             overflow: hidden;
         }
-        
+
         .btn-primary::before {
             content: '';
             position: absolute;
@@ -163,65 +194,65 @@
             transform: translate(-50%, -50%);
             transition: width 0.6s, height 0.6s;
         }
-        
+
         .btn-primary:active::before {
             width: 300px;
             height: 300px;
         }
-        
+
         .btn-primary:active {
             transform: scale(0.96);
         }
-        
+
         .unit-badge {
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            box-shadow: 
+            box-shadow:
                 0 4px 12px rgba(15, 23, 42, 0.3),
                 inset 0 1px 0 rgba(255, 255, 255, 0.1);
         }
-        
+
         .driver-card {
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
+
         .phone-btn {
             background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-            box-shadow: 
+            box-shadow:
                 0 8px 20px rgba(37, 99, 235, 0.3),
                 0 2px 8px rgba(37, 99, 235, 0.2),
                 inset 0 1px 0 rgba(255, 255, 255, 0.2);
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
+
         .phone-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 
+            box-shadow:
                 0 12px 28px rgba(37, 99, 235, 0.35),
                 0 4px 12px rgba(37, 99, 235, 0.25),
                 inset 0 1px 0 rgba(255, 255, 255, 0.3);
         }
-        
+
         .phone-btn:active {
             transform: scale(0.92);
         }
-        
+
         .timeline-dot {
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
+
         .timeline-dot.active {
             animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
         }
-        
+
         .gradient-text {
             background: linear-gradient(135deg, #0f172a 0%, #3b82f6 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
         }
-        
+
         .header-glow {
-            box-shadow: 
+            box-shadow:
                 0 20px 60px rgba(0, 0, 0, 0.12),
                 0 8px 24px rgba(0, 0, 0, 0.08),
                 0 0 0 1px rgba(255, 255, 255, 0.1),
@@ -248,11 +279,11 @@
             -moz-user-select: none;
             -ms-user-select: none;
         }
-        
+
         .bottom-drawer.expanded {
             max-height: 90vh;
         }
-        
+
         .drawer-handle {
             width: 48px;
             height: 5px;
@@ -262,19 +293,19 @@
             cursor: grab;
             transition: all 0.3s;
         }
-        
+
         .drawer-handle:active {
             cursor: grabbing;
             background: rgba(148, 163, 184, 0.6);
         }
-        
+
         .drawer-content {
             max-height: 0;
             overflow: hidden;
             opacity: 0;
             transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
         }
-        
+
         .bottom-drawer.expanded .drawer-content {
             max-height: 70vh;
             opacity: 1;
@@ -286,7 +317,7 @@
             position: relative;
             padding-left: 40px;
         }
-        
+
         .timeline-line {
             position: absolute;
             left: 8px;
@@ -296,17 +327,17 @@
             background: linear-gradient(180deg, #cbd5e1 0%, #e2e8f0 50%, #cbd5e1 100%);
             border-radius: 3px;
         }
-        
+
         .timeline-event {
             position: relative;
             padding-left: 0;
             margin-bottom: 20px;
         }
-        
+
         .timeline-event:last-child {
             margin-bottom: 0;
         }
-        
+
         .timeline-dot-wrapper {
             position: absolute;
             left: -32px;
@@ -315,15 +346,15 @@
             border-radius: 50%;
             padding: 2px;
         }
-        
+
         .expand-indicator {
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        
+
         .bottom-drawer.expanded .expand-indicator {
             transform: rotate(180deg);
         }
-        
+
         /* Center View Button */
         .center-btn {
             width: 48px;
@@ -346,20 +377,20 @@
                 height: 56px;
             }
         }
-        
+
         .center-btn:hover {
             transform: scale(1.05);
         }
-        
+
         .center-btn:active {
             transform: scale(0.95);
         }
-        
+
         .center-btn .icon-wrapper {
             color: #ffffff;
             transition: transform 0.3s ease;
         }
-        
+
         .center-btn:hover .icon-wrapper {
             transform: rotate(90deg);
         }
@@ -380,21 +411,45 @@
         }
 
         @keyframes introRadarPulse {
-            0%   { transform: scale(0.2); opacity: 0.85; }
-            100% { transform: scale(3.8); opacity: 0; }
+            0% {
+                transform: scale(0.2);
+                opacity: 0.85;
+            }
+
+            100% {
+                transform: scale(3.8);
+                opacity: 0;
+            }
         }
 
         @keyframes introDotBounce {
-            0%, 100% { transform: translateY(0)    scale(1);   opacity: 0.35; }
-            50%       { transform: translateY(-7px) scale(1.3); opacity: 1; }
+
+            0%,
+            100% {
+                transform: translateY(0) scale(1);
+                opacity: 0.35;
+            }
+
+            50% {
+                transform: translateY(-7px) scale(1.3);
+                opacity: 1;
+            }
         }
 
         @keyframes introItemFadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
+
 <body>
 
     <!-- ===== PANTALLA DE INICIO (intro) ===== -->
@@ -402,50 +457,63 @@
 
         <!-- Camión GIF + GPS radar overlay -->
         <!-- Faja de color a todo ancho -->
-        <div style="width:100vw;margin-left:calc(-50vw + 50%);margin-bottom:36px;background:#eeeeee;display:flex;justify-content:center;">
+        <div class="w-[100vw] mb-[36px] bg-[#eeeeee] flex justify-end sm:justify-center pl-4 sm:pl-0"
+            style="margin-left:calc(-50vw + 50%);">
             <!-- Contenedor del GIF limitado en ancho -->
-            <div style="position:relative;width:100%;max-width:520px;">
-            <img src="camion.gif" alt="Camión grúa" style="width:100%;display:block;">
+            <div class="relative w-full max-w-[520px] -mr-[20px] sm:mr-0">
+                <img src="camion.gif" alt="Camión grúa"
+                    class="w-full block scale-[1.05] sm:scale-100 origin-right sm:origin-center">
 
-            <!-- GPS pin + radar (overlay sobre la cabina) -->
-            <svg style="position:absolute;top:-8%;right:4%;width:60px;height:80px;overflow:visible;pointer-events:none;" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <filter id="radarBlur" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="0.6"/>
-                    </filter>
-                </defs>
-                <!-- Ondas radar -->
-                <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5" filter="url(#radarBlur)"
-                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;"/>
-                <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5" filter="url(#radarBlur)"
-                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;animation-delay:0.7s;"/>
-                <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5" filter="url(#radarBlur)"
-                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;animation-delay:1.4s;"/>
-                <!-- Pin -->
-                <path d="M30 6 C20 6 12 15 12 26 C12 40 30 60 30 60 C30 60 48 40 48 26 C48 15 40 6 30 6 Z" fill="#3b82f6"/>
-                <circle cx="30" cy="26" r="10" fill="white"/>
-                <!-- Lupa -->
-                <circle cx="29" cy="25" r="4.5" fill="none" stroke="#3b82f6" stroke-width="2"/>
-                <line x1="32.2" y1="28.2" x2="35" y2="31" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
-            </svg>
+                <!-- GPS pin + radar (overlay sobre la cabina) -->
+                <svg style="position:absolute;top:-8%;right:4%;width:60px;height:80px;overflow:visible;pointer-events:none;"
+                    viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="radarBlur" x="-50%" y="-50%" width="200%" height="200%">
+                            <feGaussianBlur stdDeviation="0.6" />
+                        </filter>
+                    </defs>
+                    <!-- Ondas radar -->
+                    <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5"
+                        filter="url(#radarBlur)"
+                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;" />
+                    <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5"
+                        filter="url(#radarBlur)"
+                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;animation-delay:0.7s;" />
+                    <circle cx="30" cy="28" r="10" fill="none" stroke="#3b82f6" stroke-width="3.5"
+                        filter="url(#radarBlur)"
+                        style="transform-box:fill-box;transform-origin:center;animation:introRadarPulse 2.1s ease-out infinite;animation-delay:1.4s;" />
+                    <!-- Pin -->
+                    <path d="M30 6 C20 6 12 15 12 26 C12 40 30 60 30 60 C30 60 48 40 48 26 C48 15 40 6 30 6 Z"
+                        fill="#3b82f6" />
+                    <circle cx="30" cy="26" r="10" fill="white" />
+                    <!-- Lupa -->
+                    <circle cx="29" cy="25" r="4.5" fill="none" stroke="#3b82f6" stroke-width="2" />
+                    <line x1="32.2" y1="28.2" x2="35" y2="31" stroke="#3b82f6" stroke-width="2"
+                        stroke-linecap="round" />
+                </svg>
             </div><!-- fin contenedor GIF -->
         </div><!-- fin faja color -->
 
         <!-- Mensajes -->
         <div style="max-width:360px;min-height:72px;">
             <div id="intro-msg1" style="transition:opacity 0.5s ease,transform 0.5s ease;">
-                <p style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin:0 0 6px;">
+                <p
+                    style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin:0 0 6px;">
                     Su servicio ha sido ingresado
                 </p>
-                <p style="color:#475569;font-family:'Outfit',sans-serif;font-size:0.93rem;font-weight:500;line-height:1.55;margin:0;">
+                <p
+                    style="color:#475569;font-family:'Outfit',sans-serif;font-size:0.93rem;font-weight:500;line-height:1.55;margin:0;">
                     estamos buscando el móvil para su servicio...
                 </p>
             </div>
-            <div id="intro-msg2" style="display:none;opacity:0;transform:translateY(18px);transition:opacity 0.5s ease,transform 0.5s ease;">
-                <p style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin:0 0 6px;">
+            <div id="intro-msg2"
+                style="display:none;opacity:0;transform:translateY(18px);transition:opacity 0.5s ease,transform 0.5s ease;">
+                <p
+                    style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:1.2rem;font-weight:700;line-height:1.5;margin:0 0 6px;">
                     Continuamos buscando el móvil
                 </p>
-                <p style="color:#475569;font-family:'Outfit',sans-serif;font-size:0.93rem;font-weight:500;line-height:1.55;margin:0;">
+                <p
+                    style="color:#475569;font-family:'Outfit',sans-serif;font-size:0.93rem;font-weight:500;line-height:1.55;margin:0;">
                     permanezca atento...
                 </p>
             </div>
@@ -453,21 +521,32 @@
 
         <!-- Puntos de carga animados -->
         <div style="display:flex;gap:10px;margin-top:28px;">
-            <span style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0s;"></span>
-            <span style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0.22s;"></span>
-            <span style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0.44s;"></span>
+            <span
+                style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0s;"></span>
+            <span
+                style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0.22s;"></span>
+            <span
+                style="display:block;width:9px;height:9px;background:#3b82f6;border-radius:50%;animation:introDotBounce 1.3s ease-in-out infinite;animation-delay:0.44s;"></span>
         </div>
 
         <!-- Mini Registro de actividad — pegado al borde inferior como el drawer principal -->
-        <div style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(40px) saturate(1.8);border:2px solid rgba(255,255,255,0.6);box-shadow:0 -8px 40px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9);border-radius:40px 40px 0 0;padding:18px 24px 28px;">
+        <div
+            style="position:absolute;bottom:0;left:0;right:0;background:rgba(255,255,255,0.92);backdrop-filter:blur(40px) saturate(1.8);border:2px solid rgba(255,255,255,0.6);box-shadow:0 -8px 40px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,0.9);border-radius:40px 40px 0 0;padding:18px 24px 28px;">
             <!-- Handle visual -->
-            <div style="width:48px;height:5px;background:rgba(148,163,184,0.5);border-radius:10px;margin:0 auto 18px;"></div>
+            <div style="width:48px;height:5px;background:rgba(148,163,184,0.5);border-radius:10px;margin:0 auto 18px;">
+            </div>
             <!-- Header -->
             <div style="display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:14px;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                <span style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;">Registro de actividad</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.5"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                </svg>
+                <span
+                    style="color:#1e293b;font-family:'Outfit',sans-serif;font-size:0.65rem;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;">Registro
+                    de actividad</span>
             </div>
-            <div style="background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:28px;padding:20px 24px;border:2px solid rgba(226,232,240,0.5);text-align:left;">
+            <div
+                style="background:linear-gradient(135deg,#f8fafc 0%,#f1f5f9 100%);border-radius:28px;padding:20px 24px;border:2px solid rgba(226,232,240,0.5);text-align:left;">
                 <div id="intro-event-log" style="display:flex;flex-direction:column;gap:10px;padding-left:16px;"></div>
             </div>
         </div>
@@ -478,21 +557,29 @@
     <div id="map"></div>
 
     <div class="ui-container">
-        <header class="interactive glass-panel rounded-[32px] p-4 sm:p-6 mt-2 transition-all duration-500 header-glow animate-slide-in" style="max-width: 100%; width: 100%;">
+        <header
+            class="interactive glass-panel rounded-[32px] p-4 sm:p-6 mt-2 transition-all duration-500 header-glow animate-slide-in w-fit max-w-full mr-auto">
             <div class="flex flex-col gap-3">
                 <div class="flex items-center gap-3">
                     <span class="relative flex h-3 w-3 shrink-0">
-                        <span id="ping" class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
-                        <span id="dot" class="relative inline-flex rounded-full h-3 w-3 bg-blue-600 shadow-lg shadow-blue-600/50"></span>
+                        <span id="ping"
+                            class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                        <span id="dot"
+                            class="relative inline-flex rounded-full h-3 w-3 bg-blue-600 shadow-lg shadow-blue-600/50"></span>
                     </span>
                     <div class="status-badge inline-block">
-                        <p id="status-label" class="text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] mono">Iniciando</p>
+                        <p id="status-label"
+                            class="text-[10px] font-black text-blue-600 uppercase tracking-[0.15em] mono">Iniciando</p>
                     </div>
                 </div>
-                <h1 id="eta-text" class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight gradient-text" style="animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards; padding-bottom: 2px;">
+                <h1 id="eta-text"
+                    class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight gradient-text"
+                    style="animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.1s backwards; padding-bottom: 2px;">
                     Preparando...
                 </h1>
-                <p id="eta-subtext" class="text-xs sm:text-sm font-semibold text-slate-500 tracking-tight leading-relaxed" style="animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;">
+                <p id="eta-subtext"
+                    class="text-xs sm:text-sm font-semibold text-slate-500 tracking-tight leading-relaxed"
+                    style="animation: slideIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) 0.2s backwards;">
                     Conectando con unidad
                 </p>
             </div>
@@ -501,22 +588,28 @@
 
     <!-- Bottom Drawer -->
     <div id="drawer" class="bottom-drawer glass-panel" style="border-radius: 40px 40px 0 0; padding: 16px 20px 24px;">
-        
+
         <!-- Drag Handle -->
         <div id="drag-handle" class="drawer-handle"></div>
-        
+
         <!-- Driver Info (Always Visible) -->
         <div class="driver-card flex items-center gap-3 sm:gap-5 mb-4">
             <div class="relative shrink-0">
-                <div class="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[26px] blur-lg opacity-30"></div>
-                <img src="https://i.pravatar.cc/150?img=52" class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-[26px] object-cover border-3 border-white shadow-xl ring-4 ring-blue-50">
-                <div class="absolute -bottom-1 -right-1 bg-emerald-500 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[3px] border-white shadow-lg">
+                <div
+                    class="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-600 rounded-[26px] blur-lg opacity-30">
+                </div>
+                <img src="https://i.pravatar.cc/150?img=52"
+                    class="relative w-16 h-16 sm:w-20 sm:h-20 rounded-[26px] object-cover border-3 border-white shadow-xl ring-4 ring-blue-50">
+                <div
+                    class="absolute -bottom-1 -right-1 bg-emerald-500 w-5 h-5 sm:w-6 sm:h-6 rounded-full border-[3px] border-white shadow-lg">
                     <div class="w-full h-full rounded-full bg-emerald-400 animate-ping opacity-75"></div>
                 </div>
             </div>
             <div class="flex-1 min-w-0">
-                <h3 class="text-slate-900 font-black text-lg sm:text-2xl leading-none mb-1.5 tracking-tight truncate">Carlos Gomez</h3>
-                <p class="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h3 class="text-slate-900 font-black text-lg sm:text-2xl leading-none mb-1.5 tracking-tight truncate">
+                    Carlos Gomez</h3>
+                <p
+                    class="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wide flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span class="inline-block w-1 h-1 rounded-full bg-slate-400 shrink-0"></span>
                     <span class="truncate">Mercedes Benz Accelo</span>
                     <span class="inline-block w-1 h-1 rounded-full bg-slate-400 shrink-0"></span>
@@ -531,7 +624,8 @@
         </div>
 
         <!-- Expand Indicator -->
-        <div id="expand-indicator" class="flex items-center justify-center gap-2 mb-4 text-slate-400 text-xs font-semibold cursor-pointer hover:text-slate-600 transition-colors py-2">
+        <div id="expand-indicator"
+            class="flex items-center justify-center gap-2 mb-4 text-slate-400 text-xs font-semibold cursor-pointer hover:text-slate-600 transition-colors py-2">
             <span class="expand-indicator">
                 <i data-lucide="chevron-up" class="w-5 h-5"></i>
             </span>
@@ -539,7 +633,8 @@
         </div>
 
         <!-- Botón reporte — fuera del scroll, siempre visible al expandir -->
-        <button id="btn-reporte" onclick="descargarReporteFinal()" class="hidden w-full btn-primary text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.12em] items-center justify-center gap-3 mb-4 shadow-xl">
+        <button id="btn-reporte" onclick="descargarReporteFinal()"
+            class="hidden w-full btn-primary text-white py-5 rounded-[24px] font-black text-sm uppercase tracking-[0.12em] items-center justify-center gap-3 mb-4 shadow-xl">
             <i data-lucide="file-check" class="w-5 h-5"></i>
             Descargar Reporte Final
         </button>
@@ -547,12 +642,13 @@
         <!-- Expandable Content -->
         <div class="drawer-content">
 
-            <div class="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-[28px] p-6 border-2 border-slate-200/50">
+            <div
+                class="bg-gradient-to-br from-slate-50 to-slate-100/50 rounded-[28px] p-6 border-2 border-slate-200/50">
                 <div class="flex items-center gap-2 mb-5">
                     <i data-lucide="activity" class="w-4 h-4 text-slate-600"></i>
                     <h4 class="text-xs font-black text-slate-700 uppercase tracking-[0.1em]">Registro de Actividad</h4>
                 </div>
-                
+
                 <div class="max-h-[50vh] overflow-y-auto">
                     <div class="timeline-container">
                         <div class="timeline-line"></div>
@@ -564,7 +660,8 @@
             </div>
 
             <!-- Report Problem Link -->
-            <a href="#" id="report-link" class="flex items-center justify-center gap-2 mt-5 text-slate-500 hover:text-red-600 text-sm font-semibold transition-colors group">
+            <a href="#" id="report-link"
+                class="flex items-center justify-center gap-2 mt-5 text-slate-500 hover:text-red-600 text-sm font-semibold transition-colors group">
                 <i data-lucide="alert-circle" class="w-4 h-4 group-hover:animate-pulse"></i>
                 <span>Reportar problema con el móvil</span>
             </a>
@@ -578,10 +675,10 @@
         let eventCounter = 0;
         let centerMode = 'both'; // 'both' | 'truck'
         let truckDir = 'right';  // 'left' | 'right'
-        
-        const posGrua = [-34.8943, -56.1661]; 
+
+        const posGrua = [-34.8943, -56.1661];
         const posCliente = [-34.9056, -56.1364];
-        const timeNow = () => new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        const timeNow = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
         // Center view button — alterna entre centrar el camión y mostrar ambos puntos
         document.getElementById('center-btn').addEventListener('click', () => {
@@ -596,7 +693,7 @@
                 // Segundo toque: volver a mostrar camión + destino
                 centerMode = 'both';
                 map.fitBounds(L.latLngBounds(mGrua.getLatLng(), posCliente), {
-                    paddingTopLeft:     [50, 140],
+                    paddingTopLeft: [50, 140],
                     paddingBottomRight: [50, drawerBottom],
                     animate: true,
                     duration: 0.6
@@ -631,7 +728,7 @@
 
         dragHandle.addEventListener('click', toggleDrawer);
         expandIndicator.addEventListener('click', toggleDrawer);
-        
+
         // Touch/Mouse drag support
         dragHandle.addEventListener('mousedown', (e) => {
             isDragging = true;
@@ -656,7 +753,7 @@
         document.addEventListener('mouseup', () => {
             if (!isDragging) return;
             isDragging = false;
-            
+
             if (Math.abs(currentY) > 50) {
                 if (currentY < 0 && !drawer.classList.contains('expanded')) {
                     toggleDrawer();
@@ -670,7 +767,7 @@
         document.addEventListener('touchend', () => {
             if (!isDragging) return;
             isDragging = false;
-            
+
             if (Math.abs(currentY) > 50) {
                 if (currentY < 0 && !drawer.classList.contains('expanded')) {
                     toggleDrawer();
@@ -681,12 +778,12 @@
             currentY = 0;
         });
 
-        const map = L.map('map', { 
-            zoomControl: false, 
-            attributionControl: false, 
-            preferCanvas: true 
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            preferCanvas: true
         }).setView(posGrua, 14);
-        
+
         // Using OpenStreetMap standard tiles with vibrant colors
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             className: 'map-tiles',
@@ -731,26 +828,26 @@
             </div>`;
 
         const mGrua = L.marker(posGrua, { icon: iconTruckRight }).addTo(map);
-        
+
         const mCliente = L.marker(posCliente, {
             icon: L.divIcon({
                 html: clienteIconHTML,
                 className: '',
                 iconSize: [72, 72],
                 iconAnchor: [36, 36]
-            }) 
+            })
         }).addTo(map);
 
         const router = L.Routing.control({
             waypoints: [L.latLng(posGrua), L.latLng(posCliente)],
-            lineOptions: { 
-                styles: [{ 
-                    color: '#3b82f6', 
-                    weight: 7, 
+            lineOptions: {
+                styles: [{
+                    color: '#3b82f6',
+                    weight: 7,
                     opacity: 0.8,
                     dashArray: '0, 12',
                     lineCap: 'round'
-                }] 
+                }]
             },
             createMarker: () => null,
             addWaypoints: false
@@ -768,11 +865,11 @@
             const hora = horaFija || timeNow();
             logs.push({ evento: texto, hora: hora });
             const container = document.getElementById('event-log');
-            
+
             let colorClass = 'bg-blue-600';
             let ringClass = 'ring-4 ring-blue-100';
             let shadowClass = '';
-            
+
             if (tipo === 'actual') {
                 colorClass = 'bg-gradient-to-br from-orange-500 to-orange-600';
                 ringClass = 'ring-4 ring-orange-100';
@@ -784,7 +881,7 @@
             }
 
             const dotClass = tipo === 'actual' ? 'timeline-dot active' : 'timeline-dot';
-            
+
             const html = `
                 <div class="timeline-event event-item" style="animation-delay: ${eventCounter * 0.05}s">
                     <div class="timeline-dot-wrapper">
@@ -798,7 +895,7 @@
                         </p>
                     </div>
                 </div>`;
-            
+
             container.insertAdjacentHTML('afterbegin', html);
             lucide.createIcons();
             eventCounter++;
@@ -834,7 +931,7 @@
                             ? Math.round(window.innerHeight * 0.88) : 230;
                         if (centerMode === 'both') {
                             map.fitBounds(L.latLngBounds([coords[i].lat, coords[i].lng], posCliente), {
-                                paddingTopLeft:     [50, 140],
+                                paddingTopLeft: [50, 140],
                                 paddingBottomRight: [50, drawerBottom],
                                 animate: true,
                                 duration: 0.6
@@ -866,7 +963,7 @@
             }, 1500);
         }
 
-        router.on('routesfound', function(e) {
+        router.on('routesfound', function (e) {
             introRouteCoords = e.routes[0].coordinates;
             if (introEnded) startTracking(introRouteCoords);
         });
@@ -958,17 +1055,17 @@
 
         function finalizarServicio() {
             logEvento("Servicio completado exitosamente", 'exito', simHora(71));
-            
+
             updateStatus(
                 'Finalizado',
                 'Servicio Completado',
                 'Reporte disponible para descarga',
                 'text-emerald-600'
             );
-            
+
             document.getElementById('ping').classList.remove('animate-ping');
             document.getElementById('dot').className = 'relative inline-flex rounded-full h-3 w-3 bg-emerald-600 shadow-lg shadow-emerald-600/50';
-            
+
             const btn = document.getElementById('btn-reporte');
             btn.classList.remove('hidden');
             btn.classList.add('flex');
@@ -992,78 +1089,79 @@
                 <span>Generando PDF...</span>
             `;
             btn.disabled = true;
-            
+
             await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const canvas = await html2canvas(document.getElementById('map'), { 
-                useCORS: true, 
+
+            const canvas = await html2canvas(document.getElementById('map'), {
+                useCORS: true,
                 ignoreElements: (el) => el.classList.contains('ui-container') || el.classList.contains('bottom-drawer'),
                 scale: 2
             });
-            
+
             const doc = new jsPDF();
-            
+
             // Header
             doc.setFillColor(15, 23, 42);
             doc.rect(0, 0, 210, 35, 'F');
-            
+
             doc.setTextColor(255, 255, 255);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(22);
             doc.text("REPORTE DE ASISTENCIA", 20, 15);
-            
+
             doc.setFontSize(9);
             doc.setFont("helvetica", "normal");
             doc.text(`Unidad #42 • Operador: Carlos Gomez • Fecha: ${new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })}`, 20, 25);
-            
+
             // Map section
             const cropWidth = canvas.width;
             const cropHeight = canvas.width * 0.5;
             const sourceY = (canvas.height - cropHeight) / 2;
             const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = cropWidth; 
+            tempCanvas.width = cropWidth;
             tempCanvas.height = cropHeight;
             const ctx = tempCanvas.getContext('2d');
             ctx.drawImage(canvas, 0, sourceY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
-            
+
             doc.addImage(tempCanvas.toDataURL('image/png'), 'PNG', 15, 45, 180, 90);
-            
+
             // Timeline section
             let currentY = 145;
             doc.setDrawColor(226, 232, 240);
             doc.setLineWidth(0.5);
             doc.line(15, currentY, 195, currentY);
-            
+
             currentY += 8;
             doc.setTextColor(15, 23, 42);
             doc.setFont("helvetica", "bold");
             doc.setFontSize(11);
             doc.text("CRONOLOGÍA DEL SERVICIO", 20, currentY);
-            
+
             currentY += 8;
             doc.setFont("helvetica", "normal");
             doc.setFontSize(9);
             doc.setTextColor(71, 85, 105);
-            
-            [...logs].reverse().forEach(log => { 
+
+            [...logs].reverse().forEach(log => {
                 if (currentY > 270) return;
                 doc.setFillColor(59, 130, 246);
                 doc.circle(17, currentY - 1.5, 1.2, 'F');
                 doc.text(`${log.hora}  —  ${log.evento}`, 23, currentY);
                 currentY += 7;
             });
-            
+
             // Footer
             doc.setFontSize(7);
             doc.setTextColor(148, 163, 184);
             doc.text('Documento generado automáticamente por Pro Tracking System', 105, 290, { align: 'center' });
-            
+
             doc.save(`Reporte_Servicio_42_${new Date().getTime()}.pdf`);
-            
+
             btn.innerHTML = originalHTML;
             btn.disabled = false;
             lucide.createIcons();
         }
     </script>
 </body>
+
 </html>
