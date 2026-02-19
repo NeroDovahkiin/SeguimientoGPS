@@ -401,11 +401,14 @@
     <div id="intro-overlay">
 
         <!-- Camión GIF + GPS radar overlay -->
-        <div style="position:relative;width:100vw;margin-left:calc(-50vw + 50%);margin-bottom:36px;background:#eeeeee;">
+        <!-- Faja de color a todo ancho -->
+        <div style="width:100vw;margin-left:calc(-50vw + 50%);margin-bottom:36px;background:#eeeeee;display:flex;justify-content:center;">
+            <!-- Contenedor del GIF limitado en ancho -->
+            <div style="position:relative;width:100%;max-width:520px;">
             <img src="camion.gif" alt="Camión grúa" style="width:100%;display:block;">
 
             <!-- GPS pin + radar (overlay sobre la cabina) -->
-            <svg style="position:absolute;top:-8%;right:4%;width:16%;overflow:visible;pointer-events:none;" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
+            <svg style="position:absolute;top:-8%;right:4%;width:60px;height:80px;overflow:visible;pointer-events:none;" viewBox="0 0 60 80" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <filter id="radarBlur" x="-50%" y="-50%" width="200%" height="200%">
                         <feGaussianBlur stdDeviation="0.6"/>
@@ -425,7 +428,8 @@
                 <circle cx="29" cy="25" r="4.5" fill="none" stroke="#3b82f6" stroke-width="2"/>
                 <line x1="32.2" y1="28.2" x2="35" y2="31" stroke="#3b82f6" stroke-width="2" stroke-linecap="round"/>
             </svg>
-        </div>
+            </div><!-- fin contenedor GIF -->
+        </div><!-- fin faja color -->
 
         <!-- Mensajes -->
         <div style="max-width:360px;min-height:72px;">
