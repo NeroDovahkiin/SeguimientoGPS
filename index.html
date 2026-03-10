@@ -9,7 +9,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -838,20 +837,82 @@
             })
         }).addTo(map);
 
-        const router = L.Routing.control({
-            waypoints: [L.latLng(posGrua), L.latLng(posCliente)],
-            lineOptions: {
-                styles: [{
-                    color: '#3b82f6',
-                    weight: 7,
-                    opacity: 0.8,
-                    dashArray: '0, 12',
-                    lineCap: 'round'
-                }]
-            },
-            createMarker: () => null,
-            addWaypoints: false
-        }).addTo(map);
+        // Objeto router compatible con el resto del código
+        const router = {
+            _handlers: {},
+            on: function(event, fn) { this._handlers[event] = fn; return this; },
+            _fire: function(event, data) { if (this._handlers[event]) this._handlers[event](data); }
+        };
+
+        let routeLine = null;
+
+        function dibujarRuta(coords) {
+            if (routeLine) map.removeLayer(routeLine);
+            routeLine = L.polyline(coords, {
+                color: '#3b82f6',
+                weight: 7,
+                opacity: 0.8,
+                dashArray: '0, 12',
+                lineCap: 'round'
+            }).addTo(map);
+        }
+
+        function fallbackRuta() {
+            const coords = [];
+            for (let i = 0; i <= 120; i++) {
+                const t = i / 120;
+                coords.push(L.latLng(
+                    posGrua[0] + (posCliente[0] - posGrua[0]) * t,
+                    posGrua[1] + (posCliente[1] - posGrua[1]) * t
+                ));
+            }
+            dibujarRuta(coords);
+            router._fire('routesfound', { routes: [{ coordinates: coords }] });
+        }
+
+        // Obtener ruta real por calles usando OSRM con timeout controlado
+        (async function obtenerRuta() {
+            const [latA, lngA] = posGrua;
+            const [latB, lngB] = posCliente;
+            const url = `https://router.project-osrm.org/route/v1/driving/${lngA},${latA};${lngB},${latB}?overview=full&geometries=geojson`;
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+            try {
+                const res = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (!data.routes || !data.routes[0]) throw new Error('Sin ruta');
+
+                const geoCoords = data.routes[0].geometry.coordinates;
+                const coords = geoCoords.map(([lng, lat]) => L.latLng(lat, lng));
+                dibujarRuta(coords);
+                router._fire('routesfound', { routes: [{ coordinates: coords }] });
+            } catch (e) {
+                clearTimeout(timeoutId);
+                console.warn('OSRM falló, usando ruta alternativa:', e.message);
+
+                // Fallback: GraphHopper
+                try {
+                    const ghUrl = `https://graphhopper.com/api/1/route?point=${latA},${lngA}&point=${latB},${lngB}&vehicle=car&locale=es&points_encoded=false&key=LijBPDQGfu7Iiq80w3HzwB4RUDJbMbj6l3TLLe1hgMD`;
+                    const controller2 = new AbortController();
+                    const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
+                    const res2 = await fetch(ghUrl, { signal: controller2.signal });
+                    clearTimeout(timeoutId2);
+                    if (!res2.ok) throw new Error('GH HTTP ' + res2.status);
+                    const data2 = await res2.json();
+                    const pts = data2.paths[0].points.coordinates;
+                    const coords2 = pts.map(([lng, lat]) => L.latLng(lat, lng));
+                    dibujarRuta(coords2);
+                    router._fire('routesfound', { routes: [{ coordinates: coords2 }] });
+                } catch (e2) {
+                    console.warn('GraphHopper también falló, usando línea recta:', e2.message);
+                    fallbackRuta();
+                }
+            }
+        })();
 
         const SIM_BASE_MIN = 20 * 60; // Hora ficticia base: 20:00
         function simHora(offsetMin) {
