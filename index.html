@@ -1180,11 +1180,61 @@
             `;
             btn.disabled = true;
 
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Centrar el mapa mostrando ambos marcadores antes de capturar
+            map.fitBounds(L.latLngBounds(mGrua.getLatLng(), mCliente.getLatLng()), {
+                paddingTopLeft: [60, 60],
+                paddingBottomRight: [60, 60],
+                animate: false
+            });
+
+            // Esperar a que el mapa termine de renderizar tiles y marcadores
+            await new Promise(resolve => setTimeout(resolve, 1200));
+
+            // Convertir SVG de divIcons a canvas manualmente para que html2canvas los capture
+            const svgEls = document.querySelectorAll('#map .leaflet-marker-pane svg');
+            const svgCanvases = [];
+            for (const svg of svgEls) {
+                try {
+                    const svgData = new XMLSerializer().serializeToString(svg);
+                    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
+                    const url = URL.createObjectURL(svgBlob);
+                    await new Promise((res) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            const c = document.createElement('canvas');
+                            c.width = svg.width.baseVal.value || 72;
+                            c.height = svg.height.baseVal.value || 72;
+                            c.getContext('2d').drawImage(img, 0, 0);
+                            svgCanvases.push({ svg, canvas: c });
+                            URL.revokeObjectURL(url);
+                            res();
+                        };
+                        img.onerror = res;
+                        img.src = url;
+                    });
+                } catch(e) { /* ignorar errores individuales */ }
+            }
 
             const canvas = await html2canvas(document.getElementById('map'), {
                 useCORS: true,
+                allowTaint: true,
+                foreignObjectRendering: false,
+                logging: false,
                 ignoreElements: (el) => el.classList.contains('ui-container') || el.classList.contains('bottom-drawer'),
+                onclone: (clonedDoc) => {
+                    // Reemplazar SVGs en el clon con imágenes base64 para asegurar captura
+                    const clonedSvgs = clonedDoc.querySelectorAll('#map .leaflet-marker-pane svg');
+                    clonedSvgs.forEach((clonedSvg, idx) => {
+                        if (svgCanvases[idx]) {
+                            const img = clonedDoc.createElement('img');
+                            img.src = svgCanvases[idx].canvas.toDataURL();
+                            img.style.cssText = clonedSvg.style.cssText;
+                            img.width = clonedSvg.width.baseVal.value || 72;
+                            img.height = clonedSvg.height.baseVal.value || 72;
+                            clonedSvg.parentNode.replaceChild(img, clonedSvg);
+                        }
+                    });
+                },
                 scale: 2
             });
 
