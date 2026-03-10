@@ -857,10 +857,27 @@
             }).addTo(map);
         }
 
+        // Decodifica polyline encoded (formato Google/Valhalla)
+        function decodePoly(encoded) {
+            const pts = [];
+            let index = 0, lat = 0, lng = 0;
+            while (index < encoded.length) {
+                let b, shift = 0, result = 0;
+                do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lat += (result & 1) ? ~(result >> 1) : result >> 1;
+                shift = 0; result = 0;
+                do { b = encoded.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lng += (result & 1) ? ~(result >> 1) : result >> 1;
+                pts.push(L.latLng(lat / 1e6, lng / 1e6));
+            }
+            return pts;
+        }
+
+        // Fallback: línea recta si todo falla
         function fallbackRuta() {
             const coords = [];
-            for (let i = 0; i <= 120; i++) {
-                const t = i / 120;
+            for (let i = 0; i <= 80; i++) {
+                const t = i / 80;
                 coords.push(L.latLng(
                     posGrua[0] + (posCliente[0] - posGrua[0]) * t,
                     posGrua[1] + (posCliente[1] - posGrua[1]) * t
@@ -870,48 +887,60 @@
             router._fire('routesfound', { routes: [{ coordinates: coords }] });
         }
 
-        // Obtener ruta real por calles usando OSRM con timeout controlado
         (async function obtenerRuta() {
             const [latA, lngA] = posGrua;
             const [latB, lngB] = posCliente;
-            const url = `https://router.project-osrm.org/route/v1/driving/${lngA},${latA};${lngB},${latB}?overview=full&geometries=geojson`;
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000);
-
+            // --- Intento 1: Valhalla (gratuito, sin API key) ---
             try {
-                const res = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const body = JSON.stringify({
+                    locations: [
+                        { lon: lngA, lat: latA },
+                        { lon: lngB, lat: latB }
+                    ],
+                    costing: 'auto',
+                    directions_options: { units: 'kilometers' }
+                });
+                const ctrl = new AbortController();
+                const tid = setTimeout(() => ctrl.abort(), 10000);
+                const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body,
+                    signal: ctrl.signal
+                });
+                clearTimeout(tid);
+                if (!res.ok) throw new Error('Valhalla HTTP ' + res.status);
                 const data = await res.json();
-                if (!data.routes || !data.routes[0]) throw new Error('Sin ruta');
-
-                const geoCoords = data.routes[0].geometry.coordinates;
-                const coords = geoCoords.map(([lng, lat]) => L.latLng(lat, lng));
+                const coords = decodePoly(data.trip.legs[0].shape);
                 dibujarRuta(coords);
                 router._fire('routesfound', { routes: [{ coordinates: coords }] });
+                return;
             } catch (e) {
-                clearTimeout(timeoutId);
-                console.warn('OSRM falló, usando ruta alternativa:', e.message);
-
-                // Fallback: GraphHopper
-                try {
-                    const ghUrl = `https://graphhopper.com/api/1/route?point=${latA},${lngA}&point=${latB},${lngB}&vehicle=car&locale=es&points_encoded=false&key=LijBPDQGfu7Iiq80w3HzwB4RUDJbMbj6l3TLLe1hgMD`;
-                    const controller2 = new AbortController();
-                    const timeoutId2 = setTimeout(() => controller2.abort(), 8000);
-                    const res2 = await fetch(ghUrl, { signal: controller2.signal });
-                    clearTimeout(timeoutId2);
-                    if (!res2.ok) throw new Error('GH HTTP ' + res2.status);
-                    const data2 = await res2.json();
-                    const pts = data2.paths[0].points.coordinates;
-                    const coords2 = pts.map(([lng, lat]) => L.latLng(lat, lng));
-                    dibujarRuta(coords2);
-                    router._fire('routesfound', { routes: [{ coordinates: coords2 }] });
-                } catch (e2) {
-                    console.warn('GraphHopper también falló, usando línea recta:', e2.message);
-                    fallbackRuta();
-                }
+                console.warn('Valhalla falló:', e.message);
             }
+
+            // --- Intento 2: OSRM con timeout estricto ---
+            try {
+                const ctrl2 = new AbortController();
+                const tid2 = setTimeout(() => ctrl2.abort(), 10000);
+                const res2 = await fetch(
+                    `https://router.project-osrm.org/route/v1/driving/${lngA},${latA};${lngB},${latB}?overview=full&geometries=geojson`,
+                    { signal: ctrl2.signal }
+                );
+                clearTimeout(tid2);
+                if (!res2.ok) throw new Error('OSRM HTTP ' + res2.status);
+                const data2 = await res2.json();
+                const coords2 = data2.routes[0].geometry.coordinates.map(([ln, la]) => L.latLng(la, ln));
+                dibujarRuta(coords2);
+                router._fire('routesfound', { routes: [{ coordinates: coords2 }] });
+                return;
+            } catch (e) {
+                console.warn('OSRM falló:', e.message);
+            }
+
+            // --- Fallback final ---
+            fallbackRuta();
         })();
 
         const SIM_BASE_MIN = 20 * 60; // Hora ficticia base: 20:00
